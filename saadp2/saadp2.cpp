@@ -1,7 +1,15 @@
 ﻿#include <iostream>
+#include <vector>
+#include <algorithm>
 #include <unordered_map>
+#include <string>
+#include <sstream>
+#include <chrono>
+#include <locale>
 
-int boyer_moore_horspool(const std::string& text, const std::string& pattern) {
+
+
+int boyer_moore_horspool(const std::string& text, const std::string& pattern, int& comparisons) {
     int len_text = text.length();
     int len_pattern = pattern.length();
 
@@ -21,6 +29,7 @@ int boyer_moore_horspool(const std::string& text, const std::string& pattern) {
         int k = 0;
         while (k < len_pattern && pattern[len_pattern - 1 - k] == text[i - k]) {
             ++k;
+            ++comparisons; // Увеличиваем количество сравнений
         }
 
         if (k == len_pattern) {
@@ -34,19 +43,163 @@ int boyer_moore_horspool(const std::string& text, const std::string& pattern) {
     return -1; // Совпадение не найдено
 }
 
+std::vector<std::string> findSubstringInText(const std::string& text, const std::string& substring, int& comparisons) {
+    std::vector<std::string> result;
+
+    size_t pos = 0;
+    while ((pos = text.find(substring, pos)) != std::string::npos) {
+        int start = pos;
+        int end = pos;
+        for (int i = start;i >= 0;i--) {
+            if (text[i] == ' ') {
+                start = i+1;
+                break;
+            }    
+        }
+        for (int i = end;i < text.length();i++) {
+            if (text[i] == ' ') {
+                end = i;
+                break;
+            }
+        }
+        result.push_back(text.substr(start,end-start+1));
+        ++pos;
+        ++comparisons; // Увеличиваем количество сравнений
+    }
+
+    return result;
+}
+
+int expandAroundCenter(const std::string& s, int left, int right, int& comparisons) {
+    while (left >= 0 && right < s.length() && s[left] == s[right]) {
+        --left;
+        ++right;
+        comparisons+=3; // Увеличиваем количество сравнений
+    }
+    return right - left - 1;
+}
+
+std::string longestPalindrome(const std::string& s, int& comparisons) {
+    int len = s.length();
+    if (len == 0) {
+        return "";
+    }
+
+    // Реверсирование строки
+    std::string reversed = s;
+    std::reverse(reversed.begin(), reversed.end());
+
+    // Сборка строки для поиска палиндрома
+    std::string searchStr = s + "#" + reversed;
+    int searchLen = searchStr.length();
+
+    // Подготовка таблицы сдвигов для плохого символа
+    std::vector<int> bad_char_table(256, -1);
+    for (int i = 0; i < len; ++i) {
+        bad_char_table[static_cast<unsigned char>(s[i])] = i;
+    }
+
+    // Процесс поиска с использованием Бойера-Мура-Хорспула
+    int maxLen = 0;
+    int maxLenIdx = 0;
+
+    for (int i = len; i < searchLen; ) {
+        int k = 0;
+        while (k < len && searchStr[i - k] == searchStr[len - 1 - k]) {
+            ++k;
+            ++comparisons;
+        }
+
+        if (k == len) {
+            // Найден палиндром
+            int currentLen = 2 * len - i;
+            if (currentLen > maxLen) {
+                maxLen = currentLen;
+                maxLenIdx = i - len;
+            }
+        }
+
+        int bad_char_shift = bad_char_table[static_cast<unsigned char>(searchStr[i])];
+        i += std::max(1, bad_char_shift);
+        ++comparisons; // Сравнение символа
+    }
+
+    return s.substr(maxLenIdx, maxLen);
+}
+
+
+// Пример использования
 int main() {
-    setlocale(LC_ALL, "RU");
-    std::string text = "ABAAABCD";
-    std::string pattern = "ABC";
+    std::string text = "This is a sample subtext. Sample text is used for testing.";
+    std::string substring = "text";
+    int comparisons = 0;
+    std::transform(
+        text.begin(), text.end(), text.begin(), [](unsigned char c)
+        { 
+            return std::tolower(c); 
+        }
+    );
+    // Поиск подстроки в тексте
+    std::vector<std::string> substrings = findSubstringInText(text, substring, comparisons);
 
-    int result = boyer_moore_horspool(text, pattern);
+    std::cout << "Found substrings:" << std::endl;
+    for (const auto& str : substrings) {
+        std::cout << str << std::endl;
+    }
 
-    if (result != -1) {
-        std::cout << "Совпадение найдено в позиции " << result << std::endl;
-    }
-    else {
-        std::cout << "Совпадение не найдено" << std::endl;
-    }
+    std::cout << "Number of comparisons: " << comparisons << std::endl;
 
     return 0;
+}
+
+
+std::pair<int, int> RabinKarpSearch(const std::string& pattern, const std::string& text) {
+    const int prime = 31; // Простое число для хэширования
+    const int mod = 1e9 + 7; // Модуль для вычисления хэша
+
+    int patternLength = pattern.size();
+    int textLength = text.size();
+
+    int patternHash = 0;
+    int currentHash = 0;
+    int power = 1;
+
+    int count = 0;
+    int comparisons = 0; // Счетчик сравнений
+
+    // Вычисляем хэши для образца и начального фрагмента текста
+    for (int i = 0; i < patternLength; i++) {
+        patternHash = (patternHash * prime + pattern[i]) % mod;
+        currentHash = (currentHash * prime + text[i]) % mod;
+
+        if (i < patternLength - 1) {
+            power = (power * prime) % mod;
+        }
+    }
+
+    // Проходим по тексту и ищем совпадения с образцом
+    for (int i = 0; i <= textLength - patternLength; i++) {
+        comparisons++; // Увеличиваем счетчик сравнений
+        if (patternHash == currentHash) {
+            bool match = true;
+            for (int j = 0; j < patternLength; j++) {
+                comparisons++; // Увеличиваем счетчик сравнений
+                if (pattern[j] != text[i + j]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                count++;
+            }
+        }
+
+        if (i < textLength - patternLength) {
+            // Обновляем хеш для следующего фрагмента текста
+            currentHash = (currentHash - (text[i] * power) % mod + mod) % mod;
+            currentHash = (currentHash * prime + text[i + patternLength]) % mod;
+        }
+    }
+
+    return std::make_pair(count, comparisons);
 }
