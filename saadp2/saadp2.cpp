@@ -6,6 +6,8 @@
 #include <sstream>
 #include <chrono>
 #include <locale>
+#include <fstream>
+using namespace std;
 
 
 
@@ -51,16 +53,20 @@ std::pair<std::vector<std::string>,int> findSubstringInText(const std::string& t
         int start = pos;
         int end = pos;
         for (int i = start;i >= 0;i--) {
-            if (text[i] == ' ') {
+            comparisons++;
+            if (text[i] == ' ' or text[i] == ',') {
                 start = i + 1;
                 break;
             }
+            start = 0;
         }
         for (int i = end;i < text.length();i++) {
-            if (text[i] == ' ') {
-                end = i;
+            comparisons++;
+            if (text[i] == ' ' or text[i] == ',') {
+                end = i - 1;
                 break;
             }
+            end = text.length() - 1;
         }
         result.push_back(text.substr(start, end - start + 1));
         ++pos;
@@ -118,11 +124,11 @@ std::pair<std::vector<std::string>,int> findSubstringInText(const std::string& t
 //    return std::make_pair(comparisons, s.substr(maxLenIdx, maxLen));
 //}
 
-std::string longestPalindrome(const std::string& s, int comparisons) {
+pair<string,int> longestPalindrome(const std::string& s, int comparisons) {
     int n = s.length();
     comparisons++;
     if (n == 0) {
-        return "";
+        return make_pair("",comparisons);
     }
 
     // Создаем таблицу для хранения информации о палиндромах
@@ -154,24 +160,39 @@ std::string longestPalindrome(const std::string& s, int comparisons) {
         }
     }
 
-    return s.substr(start, maxLength);
+    return make_pair(s.substr(start, maxLength), comparisons);
 }
 
 void nomber1() {
-    std::string text = "This is a sample subtext. Sample text is used for testing.";
-    std::string substring = "text";
+    ofstream output("output.txt"); // Создаем файл для записи
+    if (!output.is_open()) {
+        cout << "Error creating the file." << endl;
+        return;
+    }
+    string pattern;
+    string text;
     int comparisons = 0;
+    // Считываем подстроку
+    cout << "Enter the substring: " << endl;
+    getline(cin, pattern);
+    // Считываем текст
+    cout << "Enter the text: " << endl;
+    getline(cin, text);
+    // Записываем подстроку в файл
+    output << pattern << endl;
+    // Записываем текст в файл
+    output << text << endl;
+    output.close();
     std::transform(
         text.begin(), text.end(), text.begin(), [](unsigned char c)
         {
             return std::tolower(c);
         }
     );
-    // Поиск подстроки в тексте
-    std::vector<std::string> substrings;// = findSubstringInText(text, substring, comparisons);
-    std::pair<std::vector<std::string>, int> result = findSubstringInText(text, substring, comparisons);
+    std::vector<std::string> substrings;
+    std::pair<std::vector<std::string>, int> result = findSubstringInText(text, pattern, comparisons);
     comparisons = result.second;
-    substrings = result.first;
+    substrings = result.first;   
 
     std::cout << "Found substrings:" << std::endl;
     for (const auto& str : substrings) {
@@ -182,12 +203,29 @@ void nomber1() {
 }
 
 void nomber2(){
-    std::string input = "babad";
-    int comp = 0;
-    std::string result = longestPalindrome(input, comp);
-
+    ofstream output("output.txt"); // Создаем файл для записи
+    if (!output.is_open()) {
+        cout << "Error creating the file." << endl;
+        return;
+    }
+    string text;
+    int comparisons = 0;
+    // Считываем текст
+    cout << "Enter the text: " << endl;
+    getline(cin, text);
+    // Записываем текст в файл
+    output << text << endl;
+    output.close();
+    std::transform(
+        text.begin(), text.end(), text.begin(), [](unsigned char c)
+        {
+            return std::tolower(c);
+        }
+    );
+    comparisons = longestPalindrome(text, comparisons).second;
+    std::string result = longestPalindrome(text, comparisons).first;
     std::cout << "Longest palindrome: " << result << std::endl;
-    std::cout << "comp: " << comp << std::endl;
+    std::cout << "Number if comparisons: " << comparisons << std::endl;
 }
 
 // Пример использования
@@ -195,56 +233,4 @@ int main() {
     nomber2();
 
     return 0;
-}
-
-
-std::pair<int, int> RabinKarpSearch(const std::string& pattern, const std::string& text) {
-    const int prime = 31; // Простое число для хэширования
-    const int mod = 1e9 + 7; // Модуль для вычисления хэша
-
-    int patternLength = pattern.size();
-    int textLength = text.size();
-
-    int patternHash = 0;
-    int currentHash = 0;
-    int power = 1;
-
-    int count = 0;
-    int comparisons = 0; // Счетчик сравнений
-
-    // Вычисляем хэши для образца и начального фрагмента текста
-    for (int i = 0; i < patternLength; i++) {
-        patternHash = (patternHash * prime + pattern[i]) % mod;
-        currentHash = (currentHash * prime + text[i]) % mod;
-
-        if (i < patternLength - 1) {
-            power = (power * prime) % mod;
-        }
-    }
-
-    // Проходим по тексту и ищем совпадения с образцом
-    for (int i = 0; i <= textLength - patternLength; i++) {
-        comparisons++; // Увеличиваем счетчик сравнений
-        if (patternHash == currentHash) {
-            bool match = true;
-            for (int j = 0; j < patternLength; j++) {
-                comparisons++; // Увеличиваем счетчик сравнений
-                if (pattern[j] != text[i + j]) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) {
-                count++;
-            }
-        }
-
-        if (i < textLength - patternLength) {
-            // Обновляем хеш для следующего фрагмента текста
-            currentHash = (currentHash - (text[i] * power) % mod + mod) % mod;
-            currentHash = (currentHash * prime + text[i + patternLength]) % mod;
-        }
-    }
-
-    return std::make_pair(count, comparisons);
 }
