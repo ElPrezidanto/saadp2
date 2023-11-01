@@ -127,7 +127,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="saadp2.cpp" />
+    <ClCompile Include="mian.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="task3.h" />
+    <ClInclude Include="task4.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
